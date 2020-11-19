@@ -1,0 +1,4 @@
+name = JLA
+data_file = data/DES3YR/lcparam_DES+LOWz.txt
+has_mag_covmat = T
+mag_covmat_file = data/DES3YR/sys_DES+LOWz_ALLSYS.txt

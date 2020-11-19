@@ -1,0 +1,13 @@
+name = JLA
+data_file = lcparam_DES+LOWz.txt
+pecz = 0
+intrinsicdisp = 0
+twoscriptmfit = F
+scriptmcut = 10.0
+has_mag_covmat = T
+mag_covmat_file = sys_DES+LOWz_STATONLY.txt
+has_stretch_covmat = F
+has_colour_covmat = F
+has_mag_stretch_covmat = F
+has_mag_colour_covmat = F
+has_stretch_colour_covmat = F

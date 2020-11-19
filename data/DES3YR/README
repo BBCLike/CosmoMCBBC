@@ -1,0 +1,10 @@
+These inputs are in COSMOMC format.
+
+lcparam*.txt files contain the redshift-binned
+	     distances and uncertainties
+	     Following Eqs. 14&17 of Brout et al arXiv:1811.02377
+	     
+sys*.txt files contain the redshift-binned
+	 covariance matrix (20 bins = first row of file)
+	 Computation of this matrix is defined in Eqs. 12&18 of Brout et al arXiv:1811.02377
+
