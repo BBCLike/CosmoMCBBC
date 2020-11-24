@@ -45,9 +45,6 @@ MODULE BBC
     !------------------------------------------------------------
     !------------------------------------------------------------
     !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
 
     !Counts the number of lines in an open file attached to lun,
     !returning the number of lines in lines and the number of
@@ -87,6 +84,30 @@ MODULE BBC
 
     100 REWIND lun
     END SUBROUTINE count_lines
+
+    SUBROUTINE invert_covariance_matrix(invcovmat, status)
+        IMPLICIT NONE
+        INTEGER, INTENT(INOUT) :: status
+        REAL(mcp) :: invcovmat(:,:)
+
+        invcovmat = covmat
+        !Factor into Cholesky form, overwriting the input matrix
+        CALL DPOTRF(uplo,nsn,invcovmat,nsn,status)
+        IF ( status .NE. 0 ) THEN
+            STOP
+        END IF
+        !Note that DPOTRI only makes half of the matrix correct,
+        !so we have to be careful in what follows
+        CALL DPOTRI(uplo, nsn, invcovmat, nsn, status)
+        IF ( status .NE. 0 ) THEN
+            STOP
+        END IF
+    END SUBROUTINE invert_covariance_matrix
+
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
 
     !Reads the covariance matrix from a file, given the filename
     !and the number of elements to expect
@@ -140,25 +161,6 @@ MODULE BBC
     500 WRITE (*,*) 'Failed to open cov matrix file ' // TRIM(filename)
         STOP
     END SUBROUTINE read_cov_matrix
-
-    SUBROUTINE invert_covariance_matrix(invcovmat, status)
-        IMPLICIT NONE
-        INTEGER, INTENT(INOUT) :: status
-        REAL(mcp) :: invcovmat(:,:)
-
-        invcovmat = covmat
-        !Factor into Cholesky form, overwriting the input matrix
-        CALL DPOTRF(uplo,nsn,invcovmat,nsn,status)
-        IF ( status .NE. 0 ) THEN
-            STOP
-        END IF
-        !Note that DPOTRI only makes half of the matrix correct,
-        !so we have to be careful in what follows
-        CALL DPOTRI(uplo, nsn, invcovmat, nsn, status)
-        IF ( status .NE. 0 ) THEN
-            STOP
-        END IF
-    END SUBROUTINE invert_covariance_matrix
 
     subroutine BBCLikelihood_Add(LikeList, Ini)
         class(TLikelihoodList) :: LikeList
@@ -255,16 +257,7 @@ MODULE BBC
     !------------------------------------------------------------
     !------------------------------------------------------------
     !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
 
-    !------------------------------------------------------------
-    ! The public interface to reading data files
-    ! This gets information from the .ini file and reads the data file
-    ! Arguments:
-    !  filename The name of the .ini file specifying the SN dataset
-    !------------------------------------------------------------
     SUBROUTINE read_BBC_dataset( filename )
         IMPLICIT NONE
         CHARACTER(LEN=*), INTENT(in) :: filename
