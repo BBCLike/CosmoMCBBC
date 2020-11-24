@@ -19,7 +19,7 @@
         !Just convenience class for likelihoods which use a CosmologyCalculator
         class(TCosmologyCalculator), pointer :: Calculator => null()
     contains
-    procedure :: InitConfig => TCosmoCalcLikelihood_InitConfig
+        procedure :: InitConfig => TCosmoCalcLikelihood_InitConfig
     end type
 
     type, extends(TCosmologyLikelihood) :: TCMBLikelihood

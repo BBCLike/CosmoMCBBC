@@ -8,7 +8,7 @@ MODULE BBC
 
     type, extends(TCosmoCalcLikelihood) :: BBCLikelihood
         contains
-        procedure :: LogLike => BBC_LnLike
+        procedure :: LogLikeTheory => BBC_LnLike
     end type BBCLikelihood
 
     character(LEN=*), parameter :: BBC_version =  'December_2020'
@@ -261,8 +261,7 @@ MODULE BBC
 
         !Process the Ini file
         CALL Ini%Open(filename)
-
-        name = Ini%Read_String( 'name', .FALSE. )
+        name = Ini%Read_String('name', .FALSE.)
         data_file = Ini%Read_String_Default('data_file', trim(DataDir)//'BBC_lcparams.txt')
         !Now read the actual SN data
         OPEN(newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', STATUS='old', ERR = 500)
@@ -302,11 +301,9 @@ MODULE BBC
         STOP
     END SUBROUTINE BBC_prep
 
-    FUNCTION BBC_LnLike(this, CMB, Theory, DataParams)
+    FUNCTION BBC_LnLike(this, CMB)
         Class(BBCLikelihood) :: this
         Class(CMBParams) CMB
-        Class(TCosmoTheoryPredictions), target :: Theory
-        real(mcp) DataParams(:)
         REAL(mcp) :: BBC_LnLike
         real(mcp) zhel, zcmb
         integer i
@@ -327,6 +324,7 @@ MODULE BBC
             zcmb = sndata(i)%zcmb
             lumdists(i) = 5.0*LOG10((1.0+zhel)*(1.0+zcmb)*this%Calculator%AngularDiameterDistance(zcmb))
         ENDDO
+
         BBC_LnLike=0.0
     END FUNCTION BBC_LnLike
 
