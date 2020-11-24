@@ -14,9 +14,7 @@ MODULE BBC
     character(LEN=*), parameter :: BBC_version =  'December_2020'
     REAL(mcp), PARAMETER, PRIVATE :: inv_twoPI = 1.0_mcp / twopi
     CHARACTER, PARAMETER, PRIVATE :: uplo = 'U' !For LAPACK
-    INTEGER, PARAMETER, PRIVATE :: max_idisp_datasets = 10
     INTEGER, PARAMETER, PRIVATE :: snnamelen = 12
-    REAL(mcp), PARAMETER, PRIVATE :: h0cfac = 5*LOG10( 100.0/299792.458 )
 
     !Variables we will try to get from the ini file
     CHARACTER(LEN=30), PRIVATE :: name !Name of data set
@@ -36,8 +34,8 @@ MODULE BBC
     LOGICAL, PUBLIC :: BBC_read = .FALSE.
     LOGICAL, PUBLIC :: BBC_prepped = .FALSE.
 
-    PRIVATE :: count_lines, read_BBC_data, read_cov_matrix
-    PUBLIC :: BBC_prep, BBC_LnLike, BBC_cleanup, read_BBC_dataset, BBCLikelihood_Add
+    PRIVATE :: count_lines, read_BBC_data, read_cov_matrix, BBC_prep, read_BBC_dataset
+    PUBLIC :: BBC_LnLike,  BBCLikelihood_Add
 
     CONTAINS
 
@@ -320,12 +318,5 @@ MODULE BBC
 
         BBC_LnLike=0.0
     END FUNCTION BBC_LnLike
-
-    SUBROUTINE BBC_cleanup
-        IF ( ALLOCATED( sndata ) ) DEALLOCATE( sndata )
-        IF ( ALLOCATED( lumdists ) ) DEALLOCATE( lumdists )
-        IF ( ALLOCATED( covmat ) ) DEALLOCATE( covmat )
-        BBC_prepped = .FALSE.
-    END SUBROUTINE BBC_cleanup
 
 END MODULE BBC
