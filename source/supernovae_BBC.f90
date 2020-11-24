@@ -141,6 +141,25 @@ MODULE BBC
         STOP
     END SUBROUTINE read_cov_matrix
 
+    SUBROUTINE invert_covariance_matrix(invcovmat, status)
+        IMPLICIT NONE
+        INTEGER, INTENT(INOUT) :: status
+        REAL(mcp) :: invcovmat(:,:)
+
+        invcovmat = covmat
+        !Factor into Cholesky form, overwriting the input matrix
+        CALL DPOTRF(uplo,nsn,invcovmat,nsn,status)
+        IF ( status .NE. 0 ) THEN
+            STOP
+        END IF
+        !Note that DPOTRI only makes half of the matrix correct,
+        !so we have to be careful in what follows
+        CALL DPOTRI(uplo, nsn, invcovmat, nsn, status)
+        IF ( status .NE. 0 ) THEN
+            STOP
+        END IF
+    END SUBROUTINE invert_covariance_matrix
+
     !------------------------------------------------------------
     !------------------------------------------------------------
     !------------------------------------------------------------
@@ -264,25 +283,6 @@ MODULE BBC
         STOP
     END SUBROUTINE read_BBC_dataset
 
-    SUBROUTINE invert_covariance_matrix(invcovmat, status)
-        IMPLICIT NONE
-        INTEGER, INTENT(INOUT) :: status
-        REAL(mcp) :: invcovmat(:,:)
-
-        invcovmat = covmat
-        !Factor into Cholesky form, overwriting the input matrix
-        CALL DPOTRF(uplo,nsn,invcovmat,nsn,status)
-        IF ( status .NE. 0 ) THEN
-            STOP
-        END IF
-        !Note that DPOTRI only makes half of the matrix correct,
-        !so we have to be careful in what follows
-        CALL DPOTRI(uplo, nsn, invcovmat, nsn, status)
-        IF ( status .NE. 0 ) THEN
-            STOP
-        END IF
-    END SUBROUTINE invert_covariance_matrix
-
     SUBROUTINE BBC_prep
         IMPLICIT NONE
 
@@ -301,13 +301,6 @@ MODULE BBC
 
         STOP
     END SUBROUTINE BBC_prep
-
-    SUBROUTINE BBC_cleanup
-        IF ( ALLOCATED( sndata ) ) DEALLOCATE( sndata )
-        IF ( ALLOCATED( lumdists ) ) DEALLOCATE( lumdists )
-        IF ( ALLOCATED( covmat ) ) DEALLOCATE( covmat )
-        BBC_prepped = .FALSE.
-    END SUBROUTINE BBC_cleanup
 
     FUNCTION BBC_LnLike(this, CMB, Theory, DataParams)
         Class(BBCLikelihood) :: this
@@ -336,5 +329,12 @@ MODULE BBC
         ENDDO
         BBC_LnLike=0.0
     END FUNCTION BBC_LnLike
+
+    SUBROUTINE BBC_cleanup
+        IF ( ALLOCATED( sndata ) ) DEALLOCATE( sndata )
+        IF ( ALLOCATED( lumdists ) ) DEALLOCATE( lumdists )
+        IF ( ALLOCATED( covmat ) ) DEALLOCATE( covmat )
+        BBC_prepped = .FALSE.
+    END SUBROUTINE BBC_cleanup
 
 END MODULE BBC
