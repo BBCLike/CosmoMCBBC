@@ -265,14 +265,14 @@ MODULE BBC
         name = Ini%Read_String( 'name', .FALSE. )
         data_file = Ini%Read_String_Default('data_file', trim(DataDir)//'BBC_lcparams.txt')
         !Now read the actual SN data
-        OPEN( newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', STATUS='old', ERR = 500 )
-        CALL count_lines( file_unit, nlines, nsn ) !Find the number of lines
-        ALLOCATE( sndata(nsn) )
-        CALL read_BBC_data( file_unit, nlines, nsn, sndata )
-        CLOSE( file_unit )
+        OPEN(newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', STATUS='old', ERR = 500)
+        CALL count_lines(file_unit, nlines, nsn) !Find the number of lines
+        ALLOCATE(sndata(nsn))
+        CALL read_BBC_data(file_unit, nlines, nsn, sndata)
+        CLOSE(file_unit)
 
-        covfile = Ini%Read_String( 'covmat_file',.TRUE. )
-        ALLOCATE( covmat( nsn, nsn ) )
+        covfile = Ini%Read_String('covmat_file', .TRUE.)
+        ALLOCATE(covmat(nsn, nsn))
         CALL read_cov_matrix( covfile, covmat, nsn )
         CALL Ini%Close()
 
