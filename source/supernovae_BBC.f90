@@ -162,28 +162,6 @@ MODULE BBC
         STOP
     END SUBROUTINE read_cov_matrix
 
-    subroutine BBCLikelihood_Add(LikeList, Ini)
-        class(TLikelihoodList) :: LikeList
-        class(TIniFile) :: ini
-        Type(BBCLikelihood), pointer :: this
-        character (LEN=:), allocatable:: BBC_filename
-        
-        if (.not. Ini%Read_Logical('use_BBC',.false.)) then
-            return
-        endif
-
-        allocate(this)
-        this%LikelihoodType = 'SN'
-        this%name='BBC'
-        this%needs_background_functions = .true.
-        this%version = Ini%Read_String_Default('BBC_version',BBC_version)
-        call this%loadParamNames(trim(DataDir)//'BBC.paramnames')
-        call LikeList%Add(this)
-        BBC_filename = Ini%Read_String_Default('BBC_dataset',trim(DataDir)//'BBC.dataset')
-        CALL read_BBC_dataset(BBC_filename)
-        CALL BBC_prep
-    end subroutine BBCLikelihood_Add
-
     !------------------------------------------------------------
     !Reads in a supernova data file, given knowledge of the number
     !of lines to expect.  Ignores lines that start with #.
@@ -253,11 +231,6 @@ MODULE BBC
         STOP
     END SUBROUTINE BBC_prep
 
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-
     SUBROUTINE read_BBC_dataset( filename )
         IMPLICIT NONE
         CHARACTER(LEN=*), INTENT(in) :: filename
@@ -293,6 +266,33 @@ MODULE BBC
     500 WRITE(*,*) 'Error reading ' // data_file
         STOP
     END SUBROUTINE read_BBC_dataset
+
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+
+    subroutine BBCLikelihood_Add(LikeList, Ini)
+        class(TLikelihoodList) :: LikeList
+        class(TIniFile) :: ini
+        Type(BBCLikelihood), pointer :: this
+        character (LEN=:), allocatable:: BBC_filename
+        
+        if (.not. Ini%Read_Logical('use_BBC',.false.)) then
+            return
+        endif
+
+        allocate(this)
+        this%LikelihoodType = 'SN'
+        this%name='BBC'
+        this%needs_background_functions = .true.
+        this%version = Ini%Read_String_Default('BBC_version',BBC_version)
+        call this%loadParamNames(trim(DataDir)//'BBC.paramnames')
+        call LikeList%Add(this)
+        BBC_filename = Ini%Read_String_Default('BBC_dataset',trim(DataDir)//'BBC.dataset')
+        CALL read_BBC_dataset(BBC_filename)
+        CALL BBC_prep
+    end subroutine BBCLikelihood_Add
 
     FUNCTION BBC_LnLike(this, CMB)
         Class(BBCLikelihood) :: this
