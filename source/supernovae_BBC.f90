@@ -160,14 +160,6 @@ MODULE BBC
         END IF
     END SUBROUTINE invert_covariance_matrix
 
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-    !------------------------------------------------------------
-
     subroutine BBCLikelihood_Add(LikeList, Ini)
         class(TLikelihoodList) :: LikeList
         class(TIniFile) :: ini
@@ -240,6 +232,33 @@ MODULE BBC
 
     END SUBROUTINE read_BBC_data
 
+    SUBROUTINE BBC_prep
+        IMPLICIT NONE
+
+        IF (.NOT. BBC_read) THEN
+            STOP 'BBC data was not read in'
+        ENDIF
+        IF (nsn < 1) THEN
+            STOP 'No BBC data read'
+        ENDIF
+        
+        ALLOCATE(lumdists(nsn))
+
+        BBC_prepped = .TRUE.
+
+        RETURN
+
+        STOP
+    END SUBROUTINE BBC_prep
+
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+    !------------------------------------------------------------
+
     !------------------------------------------------------------
     ! The public interface to reading data files
     ! This gets information from the .ini file and reads the data file
@@ -281,25 +300,6 @@ MODULE BBC
     500 WRITE(*,*) 'Error reading ' // data_file
         STOP
     END SUBROUTINE read_BBC_dataset
-
-    SUBROUTINE BBC_prep
-        IMPLICIT NONE
-
-        IF (.NOT. BBC_read) THEN
-            STOP 'BBC data was not read in'
-        ENDIF
-        IF (nsn < 1) THEN
-            STOP 'No BBC data read'
-        ENDIF
-        
-        ALLOCATE(lumdists(nsn))
-
-        BBC_prepped = .TRUE.
-
-        RETURN
-
-        STOP
-    END SUBROUTINE BBC_prep
 
     FUNCTION BBC_LnLike(this, CMB)
         Class(BBCLikelihood) :: this
