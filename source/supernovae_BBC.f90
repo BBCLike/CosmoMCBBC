@@ -159,7 +159,7 @@ MODULE BBC
   
             READ (lun, *, ERR=60, END=50) sndata(count)%name, sndata(count)%zcmb, &
                 sndata(count)%zhel, tmp, sndata(count)%mag, sndata(count)%mag_err
-            sndata(count)%mu = sndata(count)%mag + 19.3 ! TODO: OFFSET
+            sndata(count)%mu = sndata(count)%mag + 19.35 ! TODO: OFFSET
             sndata(count)%mu_err = sndata(count)%mag_err
             count = count+1
         END DO
@@ -276,7 +276,9 @@ MODULE BBC
     FUNCTION BBC_LnLike(this, CMB)
         Class(BBCLikelihood) :: this
         Class(CMBParams) CMB
-        real(mcp) zhel, zcmb, dl, BBC_LnLike, BBC_CHI2
+        real(mcp) :: ANALYTIC_MARG_A, ANALYTIC_MARG_B, ANALYTIC_MARG_C
+        real(mcp) :: TMP_A, TMP_B, TMP_C, X
+        real(mcp) :: zhel, zcmb, dl, BBC_LnLike, BBC_CHI2
         integer i, j
 
         BBC_LnLike = logZero
@@ -296,13 +298,26 @@ MODULE BBC
             lumdists(i) = 5.0*LOG10(dl/1e-5)
         ENDDO
 
-        BBC_CHI2=0.0
+        ANALYTIC_MARG_A = 0.0
+        ANALYTIC_MARG_B = 0.0
+        ANALYTIC_MARG_C = 0.0
+        BBC_CHI2 = 0.0
+        X = 5*LOG(CMB%H0/70.0)
         DO i=1,nsn
+            TMP_A = 0
+            TMP_B = 0
+            TMP_C = 0
             DO j=1,nsn
-                BBC_CHI2 = BBC_CHI2 + (lumdists(i)-sndata(i)%mu)*covmat(i,j)*(lumdists(j)-sndata(j)%mu)                
+                !VM: GET LUMINOSITY IN H0 = 70 (DOING FLAT APPROX FOR NOW)
+                TMP_A = TMP_A + covmat(i,j)*((lumdists(j)+X)-sndata(j)%mu)
+                TMP_B = TMP_B + covmat(i,j)
+                TMP_C = TMP_C + covmat(i,j)
             ENDDO
+            ANALYTIC_MARG_A = ANALYTIC_MARG_A + TMP_A*((lumdists(i)+X)-sndata(i)%mu)
+            ANALYTIC_MARG_B = ANALYTIC_MARG_B + TMP_B*((lumdists(i)+X)-sndata(i)%mu)
+            ANALYTIC_MARG_C = ANALYTIC_MARG_C + TMP_C
         ENDDO
-        ! TODO: H0 MARGINALIZATION
+        BBC_CHI2 = ANALYTIC_MARG_A + LOG(ANALYTIC_MARG_C/twopi) - ANALYTIC_MARG_B**2/ANALYTIC_MARG_C
         BBC_LnLike = 0.5*BBC_CHI2
     END FUNCTION BBC_LnLike
 
