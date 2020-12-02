@@ -156,7 +156,7 @@ MODULE BBC
             ENDIF
 
     20      BACKSPACE lun
-  
+
             READ (lun, *, ERR=60, END=50) sndata(count)%name, sndata(count)%zcmb, &
                 sndata(count)%zhel, tmp, sndata(count)%mag, sndata(count)%mag_err
             sndata(count)%mu = sndata(count)%mag + 19.35 ! TODO: OFFSET
@@ -183,7 +183,7 @@ MODULE BBC
         IF (nsn < 1) THEN
             STOP 'No BBC data read'
         ENDIF
-        
+
         ALLOCATE(lumdists(nsn))
 
         DO j=1,nsn
@@ -207,7 +207,7 @@ MODULE BBC
                 covmat(j,k) = covmat(k,j)
             ENDDO
         ENDDO
-        
+
         BBC_prepped = .TRUE.
         RETURN
     END SUBROUTINE BBC_prep
@@ -227,7 +227,7 @@ MODULE BBC
 
         CALL Ini%Open(filename)
         data_file = Ini%Read_String('data_file')
-        
+
         OPEN(newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', STATUS='old', ERR=500)
         CALL count_lines(file_unit, nlines, nsn) !Find the number of lines
 
@@ -257,7 +257,7 @@ MODULE BBC
         class(TIniFile) :: ini
         Type(BBCLikelihood), pointer :: this
         character (LEN=:), allocatable:: BBC_filename
-        
+
         if (.not. Ini%Read_Logical('use_BBC',.false.)) then
             return
         endif
@@ -308,7 +308,6 @@ MODULE BBC
             TMP_B = 0
             TMP_C = 0
             DO j=1,nsn
-                !VM: GET LUMINOSITY IN H0 = 70 (DOING FLAT APPROX FOR NOW)
                 TMP_A = TMP_A + covmat(i,j)*((lumdists(j)+X)-sndata(j)%mu)
                 TMP_B = TMP_B + covmat(i,j)
                 TMP_C = TMP_C + covmat(i,j)
