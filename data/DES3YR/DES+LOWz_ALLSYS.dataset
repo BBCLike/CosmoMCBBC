@@ -1,2 +1,3 @@
 data_file = data/DES3YR/lcparam_DES+LOWz.txt
-covmat_file = data/DES3YR/sys_DES+LOWz_ALLSYS.txt
+covmat_syst_file = data/DES3YR/sys_DES+LOWz_ALLSYS.txt
+covmat_stat_file = ''

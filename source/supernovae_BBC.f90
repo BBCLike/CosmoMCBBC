@@ -26,7 +26,12 @@ MODULE BBC
 
     INTEGER, PUBLIC :: nsn  !Number of supernovae
     TYPE(supernova), ALLOCATABLE, PRIVATE :: sndata(:) !Supernova data
-    REAL(mcp), ALLOCATABLE, PRIVATE :: covmat(:,:)
+    LOGICAL, PRIVATE :: FOUND_COVMAT_SYST = .FALSE.
+    LOGICAL, PRIVATE :: FOUND_COVMAT_STAT = .FALSE.
+    REAL(mcp), ALLOCATABLE, PRIVATE :: covmat_syst(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: covmat_stat(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: covmat_tot(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: covmat_inv_tot(:,:)
 
     ! THEORY LUM DIST IS A GLOBAL MODULE VARIABLE TO AVOID
     ! MALLOC/FREE AT EVERY CHAIN POINT
@@ -175,7 +180,7 @@ MODULE BBC
 
     SUBROUTINE BBC_prep
         IMPLICIT NONE
-        integer :: j, k, status
+        integer :: i, j, k, status
 
         IF (.NOT. BBC_read) THEN
             STOP 'BBC data was not read in'
@@ -186,25 +191,36 @@ MODULE BBC
 
         ALLOCATE(lumdists(nsn))
 
-        DO j=1,nsn
-            covmat(j,j) = covmat(j,j) + sndata(j)%mu_err*sndata(j)%mu_err
-        END DO
+        IF (.NOT. FOUND_COVMAT_STAT) THEN
+            DO j=1,nsn
+                !BACKWARD COMPATIBILITY WITH LEGACY COSMOMC JLA SN CODE
+                covmat_stat(j,j) = sndata(j)%mu_err*sndata(j)%mu_err
+            END DO
+        ENDIF
+        
+        DO i=1,nsn
+            DO j=1,nsn
+                covmat_tot(i,j) = covmat_stat(i,j) + covmat_syst(i,j)
+                ! DPOTRF AND DPOTRI INV FUNCTIONS OVERWRITE covmat_inv_tot
+                covmat_inv_tot(i,j) = covmat_tot(i,j)
+            ENDDO
+        ENDDO
 
         !Factor into Cholesky form, overwriting the input matrix
-        CALL DPOTRF(uplo, nsn, covmat, nsn, status)
+        CALL DPOTRF(uplo, nsn, covmat_inv_tot, nsn, status)
         IF (status .NE. 0) THEN
             STOP
         END IF
         !Note that DPOTRI only makes half of the matrix correct,
         !so we have to be careful in what follows
-        CALL DPOTRI(uplo, nsn, covmat, nsn, status)
+        CALL DPOTRI(uplo, nsn, covmat_inv_tot, nsn, status)
         IF (status .NE. 0) THEN
             STOP
         END IF
 
         DO k=1,nsn
             DO j=k+1,nsn
-                covmat(j,k) = covmat(k,j)
+                covmat_inv_tot(j,k) = covmat_inv_tot(k,j)
             ENDDO
         ENDDO
 
@@ -215,9 +231,10 @@ MODULE BBC
     SUBROUTINE read_BBC_dataset(filename)
         IMPLICIT NONE
         CHARACTER(LEN=*), INTENT(in) :: filename
-        CHARACTER(LEN=:), allocatable :: covfile
+        CHARACTER(LEN=:), allocatable :: covfile_syst
+        CHARACTER(LEN=:), allocatable :: covfile_stat
         CHARACTER(LEN=:), allocatable :: data_file
-        INTEGER :: nlines
+        INTEGER :: i, j, nlines
         Type(TSettingIni) :: Ini
         integer file_unit
 
@@ -235,9 +252,48 @@ MODULE BBC
         CALL read_BBC_data(file_unit, nlines, nsn, sndata)
         CLOSE(file_unit)
 
-        covfile = Ini%Read_String('covmat_file', .TRUE.)
-        ALLOCATE(covmat(nsn, nsn))
-        CALL read_cov_matrix(covfile, covmat, nsn)
+        ALLOCATE(covmat_syst(nsn, nsn))     ! READ FROM FILE
+        ALLOCATE(covmat_stat(nsn, nsn))     ! READ FROM FILE
+        ALLOCATE(covmat_tot(nsn, nsn))      ! LOADED AT BBC PREP SUBROUTINE
+        ALLOCATE(covmat_inv_tot(nsn, nsn))  ! LOADED AT BBC PREP SUBROUTINE
+        DO i=1,nsn
+            DO j=1,nsn
+                covmat_syst(i,j) = 0.0
+                covmat_stat(i,j) = 0.0
+                covmat_tot(i,j) = 0.0
+                covmat_inv_tot(i,j) = 0.0
+            ENDDO
+        ENDDO
+
+        ! READ SYST COV
+        covfile_syst = Ini%Read_String_Default('covmat_syst_file',default='',AllowBlank=.TRUE.,EnvDefault=.FALSE.)
+        IF (covfile_syst .ne. '') THEN
+            CALL read_cov_matrix(covfile_syst, covmat_syst, nsn)
+            FOUND_COVMAT_SYST = .TRUE.
+        ELSE
+            write(*,*) 'BBC SN: SYS COV NOT FOUND, COV_SYST SET TO ZERO'
+            FOUND_COVMAT_SYST = .FALSE.
+        END IF
+
+        ! READ STAT COV
+        ! IF STAT FILE != EXISTS, THEN WE ASSUME STAT ERRORS = dm
+        ! (dm = column on BBC DATA FILE - THIS ENSURES BACKWARDS COMPAT)
+        covfile_stat = Ini%Read_String_Default('covmat_stat_file',default='',AllowBlank=.TRUE.,EnvDefault=.FALSE.)
+        IF (covfile_stat .ne. '') THEN
+            CALL read_cov_matrix(covfile_stat, covmat_stat, nsn)
+            FOUND_COVMAT_STAT = .TRUE.
+        ELSE
+            write(*,*) 'BBC SN: STAT COV NOT FOUND, DIAG(COV_STAT) SET TO MU ERROR ON BBC DATA'
+            FOUND_COVMAT_STAT = .FALSE.
+        END IF
+
+        IF(Ini%HasKey('mag_covmat_file')) THEN
+            write(*,*) 'ERROR: OLD KEY mag_covmat_file IS NO LONGER VALID'
+            write(*,*) 'USE THE KEYSET (covmat_stat_file, covmat_syst_file) INSTEAD'
+            write(*,*) 'ABORT'
+            STOP
+        ENDIF
+
         CALL Ini%Close()
 
         BBC_read = .TRUE.
@@ -308,9 +364,9 @@ MODULE BBC
             TMP_B = 0
             TMP_C = 0
             DO j=1,nsn
-                TMP_A = TMP_A + covmat(i,j)*((lumdists(j)+X)-sndata(j)%mu)
-                TMP_B = TMP_B + covmat(i,j)
-                TMP_C = TMP_C + covmat(i,j)
+                TMP_A = TMP_A + covmat_inv_tot(i,j)*((lumdists(j)+X)-sndata(j)%mu)
+                TMP_B = TMP_B + covmat_inv_tot(i,j)
+                TMP_C = TMP_C + covmat_inv_tot(i,j)
             ENDDO
             ANALYTIC_MARG_A = ANALYTIC_MARG_A + TMP_A*((lumdists(i)+X)-sndata(i)%mu)
             ANALYTIC_MARG_B = ANALYTIC_MARG_B + TMP_B*((lumdists(i)+X)-sndata(i)%mu)
