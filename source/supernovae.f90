@@ -7,7 +7,7 @@ module snovae
         use likelihood
         use settings
         use JLA
-        use BBC
+        !use BBC
         class(TLikelihoodList) :: LikeList
         class(TSettingIni) :: ini
         integer count
@@ -18,7 +18,7 @@ module snovae
         count = LikeList%Count
         call SNLSLikelihood_Add(LikeList, Ini)
         call JLALikelihood_Add(LikeList, Ini)
-        call BBCLikelihood_Add(LikeList, Ini)
+        !call BBCLikelihood_Add(LikeList, Ini)
         call Union2Likelihood_Add(LikeList, Ini)
         if (LikeList%Count > count+1) then
             call MpiStop('SNLikelihood_Add: more than one - datasets not independent')

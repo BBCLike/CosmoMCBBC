@@ -20,53 +20,6 @@ ifeq ($(FORUTILSPATH),)
 $(error Use  git clone --recurse-submodules, install forutils from https://github.com/cmbant/forutils, or set FORUTILSPATH variable)
 endif
 
-ifortErr = $(shell which ifort >/dev/null; echo $$?)
-
-#these settings for ifort 14 and higher. Earlier versions will not work.
-ifeq "$(ifortErr)" "0"
-#ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
-
-F90C     = ifort
-
-mpierr= $(shell which mpiifort >/dev/null 2>&1; echo $$?)
-ifeq "$(mpierr)" "0"
-MPIF90C  ?= mpiifort -fc=ifort
-endif
-
-FFLAGS = -mkl -O3 -no-prec-div -fpp
-DEBUGFLAGS = -mkl -g -check all -check noarg_temp_created -traceback -fpp -fpe0
-#add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
-MODOUT = -module $(OUTPUT_DIR)
-LAPACKL =
-
-ifortVer_major = $(shell ifort -v 2>&1 | cut -d " " -f 3 | cut -d. -f 1)
-ifeq ($(shell test $(ifortVer_major) -gt 15; echo $$?),0)
-FFLAGS+= -qopenmp
-DEBUGFLAGS+= -qopenmp
-else
-FFLAGS+= -openmp
-DEBUGFLAGS+= -openmp
-endif
-
-ifneq ($(NERSC_HOST),)
-#setting for Edison/Cori on NERSC
-MPIF90C = ftn
-FFLAGS = -fpp -qopenmp -dynamic -axMIC-AVX512,CORE-AVX2
-else
-ifeq ($(STATIC),YES)
-#so you can re-distribute the binary to another machine
-#static link details from https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
-LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
-FFLAGS+=  -axAVX,SEE4.2 -static-intel
-else
-ifneq ($(HOSTNAME),apollo-login)
-#Remove this if your cluster is not uniform (different CPUs)
-FFLAGS += -xHost
-endif
-endif
-endif
-
-else
 #gfortran 5.x and earlier will not work (many F2003 bugs)
 #gfortran 6 should work
 #see CosmoBox virtual machines for stable environments
@@ -84,27 +37,12 @@ ifneq ($(shell uname -s),Darwin)
 FFLAGS+=-march=native
 endif
 
-endif
-
 MPIF90C ?= mpif90
-
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
 
 EXTDATA=
-
-#use PRECISION=SINGLE to use single precision (probably doesn't work)
-PRECISION ?=
-
-#set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
-WMAP ?=
-
-#e.g. PICO=/path/to/pypico
-PICO ?= $(shell python -c "import pypico; print pypico.get_folder()" 2> /dev/null)
-
-#Needed for WMAP; set from ~/.bashrc definition or edit here
-cfitsio ?=
 
 #not used in public cosmomc
 NONCLIKLIKE ?=
@@ -122,16 +60,12 @@ ifeq ($(OUTPUT_DIR),Debug)
 FFLAGS=$(DEBUGFLAGS)
 endif
 
-
 ifeq ($(BUILD),MPI)
 override OUTPUT_DIR :=$(OUTPUT_DIR)MPI
 FFLAGS +=  -DMPI
 LAPACKL +=  $(LINKMPI)
 F90C = $(MPIF90C)
 endif
-
-#would like to embed this somehow..
-#GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
 CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 
@@ -140,19 +74,6 @@ PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb/fortran/$(OUTPUT_DIR) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ $(INCLUDE)
 LINKFLAGS = -L../camb/fortran/$(OUTPUT_DIR) -lcamb -L$(FORUTILSPATH)/$(OUTPUT_DIR) -lforutils $(LAPACKL) $(F90CRLINK) $(CLIKL)
-
-ifneq ($(PICO),)
-ifneq ($(PICO),NO)
-CALCFILES += $(OUTPUT_DIR)/fpico_interface.o $(OUTPUT_DIR)/Calculator_PICO.o
-LINKFLAGS +=  $(shell python -c "import pypico; print pypico.get_link()")
-F90FLAGS += -DPICO $(shell python -c "import pypico; print pypico.get_include()")
-endif
-endif
-
-
-ifneq ($(PRECISION),)
-FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
-endif
 
 PLANCKLIKEFILES= $(OUTPUT_DIR)/CMB_BK_Planck.o
 
@@ -174,8 +95,8 @@ OBJFILES = $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/settings.o \
 	$(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
 	$(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/GeneralSetup.o
 
-
-SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o $(OUTPUT_DIR)/supernovae_BBC.o
+SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o
+#$(OUTPUT_DIR)/supernovae_BBC.o
 SZ = $(OUTPUT_DIR)/szcounts.o
 
 DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
@@ -214,7 +135,6 @@ $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/settings.o
 
 $(OUTPUT_DIR)/CalcLike_Cosmology.o: $(OUTPUT_DIR)/calclike.o
-
 
 $(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/IO.o
@@ -263,18 +183,8 @@ $(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o $(OUTPUT_DIR)/f
 $(OUTPUT_DIR)/ElementAbundances.o: $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
 
-#$(OUTPUT_DIR)/gauss.o: $(OUTPUT_DIR)/Calculator_CAMB.o
-
-
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a
-endif
-
-
-ifneq ($(WMAP),)
-$(OUTPUT_DIR)/CMB.o: $(WMAP)/libwmap9.a
-F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP) -DWMAP
-LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio -lwmap9
 endif
 
 F90FLAGS += $(MODOUT) $(IFLAG)$(OUTPUT_DIR)/
@@ -306,17 +216,14 @@ cosmomc: directories camb $(OBJFILES)
 cosmomc_debug: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
-
 clean: cleancosmomc
 	cd ../camb/forutils; make clean
 	cd ../camb/fortran; make clean
-
 
 cleancosmomc:
 	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ../core
 	rm -rf Release*
 	rm -rf Debug*
-
 
 camb:
 	cd ../camb/fortran && \
@@ -325,7 +232,3 @@ camb:
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
-
-$(WMAP)/libwmap9.a:
-	cd $(WMAP); make libwmap9.a;
-

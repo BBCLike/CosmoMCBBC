@@ -1,0 +1,8 @@
+module unload openmpi
+module unload gcc
+module unload PrgEnv-gnu
+module unload PrgEnv-intel
+
+module load PrgEnv-gnu
+module load nano
+module load openmpi

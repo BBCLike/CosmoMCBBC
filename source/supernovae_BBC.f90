@@ -45,6 +45,12 @@ MODULE BBC
 
     CONTAINS
 
+    ! SIMPLIFIED BACKGROUND EVOLUTION (TO COMPUTE H(Z)
+    SUBROUTINE simplified_background(omm, grhok)
+        REAL(mcp), intent(in) :: omm
+        
+    END SUBROUTINE
+
     !------------------------------------------------------------
     !------------------------------------------------------------
     !------------------------------------------------------------

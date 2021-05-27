@@ -24,7 +24,6 @@ OUTPUT_DIR ?= Release
 PYCAMB_OUTPUT_DIR ?= ../camb
 DLL_DIR ?= Releaselib
 
-
 CAMBLIB       = libcamb.a
 
 SOURCEFILES      = constants config classes MathUtils subroutines DarkAge21cm \
@@ -53,7 +52,6 @@ python: FORUTILS_DIR=$(FORUTILSPATH)/$(DLL_DIR)/
 
 LIBLINK = -L"$(FORUTILS_DIR)" -lforutils
 	
-
 ## CosmoRec
 ifneq (,$(findstring cosmorec,$(RECOMBINATION_FILES)))
 camb: libCosmoRec.a
@@ -75,9 +73,9 @@ endif
 
 default: camb
 
-all: camb python libcamb
-Release: camb python
-Debug: camb python
+all: camb
+Release: camb
+Debug: camb
 
 MAKEOPT ?= --no-print-directory
 
